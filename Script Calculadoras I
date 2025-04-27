@@ -1,0 +1,169 @@
+from ipywidgets import interact, widgets, VBox, HBox, Output
+from IPython.display import display
+from scipy.stats import binom, poisson, bernoulli, geom, nbinom, hypergeom, randint
+import math
+
+def calcular(distribucion, opcion, n=None, p=None, lam=None, r=None, N=None, K=None, a=None, b=None):
+    if distribucion == "Binomial":
+        dist = binom(n, p)
+        media = n * p
+        varianza = n * p * (1 - p)
+
+    elif distribucion == "Poisson":
+        dist = poisson(lam)
+        media = lam
+        varianza = lam
+
+    elif distribucion == "Bernoulli":
+        dist = bernoulli(p)
+        media = p
+        varianza = p * (1 - p)
+
+    elif distribucion == "Geométrica":
+        dist = geom(p)
+        media = 1 / p
+        varianza = (1 - p) / (p ** 2)
+
+    elif distribucion == "Binomial Negativa":
+        dist = nbinom(r, p)
+        media = r / p
+        varianza = r * (1 - p) / (p ** 2)
+
+    elif distribucion == "Hipergeométrica":
+        dist = hypergeom(N, K, n)
+        media = n * (K / N)
+        varianza = n * (K / N) * (1 - K / N) * (N - n) / (N - 1)
+
+    elif distribucion == "Uniforme Discreta":
+        dist = randint(a, b + 1)
+        media = (a + b) / 2
+        varianza = ((b - a + 1) ** 2 - 1) / 12
+
+    else:
+        print("Distribución no reconocida")
+        return
+
+    # Calcular probabilidad
+    if opcion == "P(X>x)":
+        resultado = 1 - dist.cdf(a)
+    elif opcion == "P(X<x)":
+        resultado = dist.cdf(a - 1)
+    elif opcion == "P(a<X<b)":
+        resultado = dist.cdf(b - 1) - dist.cdf(a)
+    elif opcion == "P(a≤X≤b)":
+        resultado = dist.cdf(b) - dist.cdf(a - 1)
+    elif opcion == "P(X<x or X>b)":
+        resultado = dist.cdf(a - 1) + (1 - dist.cdf(b))
+    elif opcion == "P(X≤a or X≥b)":
+        resultado = dist.cdf(a) + (1 - dist.cdf(b - 1))
+    elif opcion == "P(X=x)":
+        if distribucion == "Binomial Negativa":
+            resultado = dist.pmf(a - r)  # Corrección para binomial negativa
+        else:
+            resultado = dist.pmf(a)
+    elif opcion == "P(X<=x)":
+        resultado = dist.cdf(a)
+    elif opcion == "P(X>=x)":
+        resultado = 1 - dist.cdf(a - 1)
+    else:
+        resultado = None
+
+    desviacion = math.sqrt(varianza)
+
+    print(f"\n--- Resultados ---")
+    print(f"Probabilidad solicitada: {resultado:.5f}")
+    print(f"Media (μ): {media}")
+    print(f"Varianza (σ²): {varianza}")
+    print(f"Desviación estándar (σ): {desviacion}")
+
+# Modificar opciones del Dropdown para incluir nuevas probabilidades
+def interfaz_distribuciones():
+    distribuciones = ["Binomial", "Poisson", "Bernoulli", "Geométrica", "Binomial Negativa", "Hipergeométrica", "Uniforme Discreta"]
+    opciones_prob = ["P(X>x)", "P(X<x)", "P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)", "P(X=x)", "P(X<=x)", "P(X>=x)"]
+
+    distribucion = widgets.Dropdown(options=distribuciones, description="Distribución:")
+    opcion = widgets.Dropdown(options=opciones_prob, description="¿Qué calcular?")
+
+    # Todos los parámetros posibles
+    n = widgets.IntText(description="n:", value=10)
+    p = widgets.FloatText(description="p:", value=0.5)
+    lam = widgets.FloatText(description="λ:", value=3)
+    r = widgets.IntText(description="r:", value=5)
+    N = widgets.IntText(description="N:", value=50)
+    K = widgets.IntText(description="K:", value=20)
+    a = widgets.IntText(description="x/a:", value=2)
+    b = widgets.IntText(description="b:", value=5)
+
+    parametros = VBox([n, p, lam, r, N, K, a, b])
+
+    def mostrar_ocultar(*args):
+        campos = [n, p, lam, r, N, K, a, b]
+        for campo in campos:
+            campo.layout.display = 'none'
+
+        if distribucion.value == "Binomial":
+            n.layout.display = ''
+            p.layout.display = ''
+            a.layout.display = ''
+            if opcion.value in ["P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)"]:
+                b.layout.display = ''
+
+        elif distribucion.value == "Poisson":
+            lam.layout.display = ''
+            a.layout.display = ''
+            if opcion.value in ["P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)"]:
+                b.layout.display = ''
+
+        elif distribucion.value == "Bernoulli":
+            p.layout.display = ''
+            a.layout.display = ''
+
+        elif distribucion.value == "Geométrica":
+            p.layout.display = ''
+            a.layout.display = ''
+            if opcion.value in ["P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)"]:
+                b.layout.display = ''
+
+        elif distribucion.value == "Binomial Negativa":
+            r.layout.display = ''
+            p.layout.display = ''
+            a.layout.display = ''
+            if opcion.value in ["P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)"]:
+                b.layout.display = ''
+
+        elif distribucion.value == "Hipergeométrica":
+            N.layout.display = ''
+            K.layout.display = ''
+            n.layout.display = ''
+            a.layout.display = ''
+            if opcion.value in ["P(a<X<b)", "P(a≤X≤b)", "P(X<x or X>b)", "P(X≤a or X≥b)"]:
+                b.layout.display = ''
+
+        elif distribucion.value == "Uniforme Discreta":
+            a.layout.display = ''
+            b.layout.display = ''
+
+    distribucion.observe(mostrar_ocultar, 'value')
+    opcion.observe(mostrar_ocultar, 'value')
+
+    def actualizar(distribucion, opcion, n, p, lam, r, N, K, a, b):
+        calcular(distribucion, opcion, n, p, lam, r, N, K, a, b)
+
+    out = widgets.interactive_output(actualizar, {
+        'distribucion': distribucion,
+        'opcion': opcion,
+        'n': n,
+        'p': p,
+        'lam': lam,
+        'r': r,
+        'N': N,
+        'K': K,
+        'a': a,
+        'b': b
+    })
+
+    mostrar_ocultar()
+    display(VBox([HBox([distribucion, opcion]), parametros, out]))
+
+# Ejecutar la interfaz
+interfaz_distribuciones()
