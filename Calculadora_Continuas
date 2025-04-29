@@ -1,0 +1,156 @@
+# Ejecuta esta celda en Google Colab
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import uniform, norm, expon, erlang
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+
+# Widgets para definir la distribución
+a_distribucion_w = widgets.FloatText(description="a (distribución):", value=-5)
+b_distribucion_w = widgets.FloatText(description="b (distribución):", value=5)
+
+# Widgets para definir el intervalo de probabilidad
+a_intervalo_w = widgets.FloatText(description="a (intervalo):", value=-2.5)
+b_intervalo_w = widgets.FloatText(description="b (intervalo):", value=2.5)
+x_w = widgets.FloatText(description="x:", value=0.0)
+
+# Selección de distribución
+distribucion_w = widgets.Dropdown(
+    options=["Uniforme", "Normal", "Exponencial", "Erlang"],
+    description="Distribución:"
+)
+
+# Selección del tipo de probabilidad
+tipo_prob_w = widgets.Dropdown(
+    options=[
+        ("P(X = x)", "igual"),
+        ("P(X > x)", "mayor"),
+        ("P(X < x)", "menor"),
+        ("P(X ≤ x)", "menor_igual"),  # Nueva opción
+        ("P(X ≥ x)", "mayor_igual"),  # Nueva opción
+        ("P(a < X < b)", "entre_exclusivo"),
+        ("P(a ≤ X ≤ b)", "entre_inclusivo"),
+        ("P(X < a o X > b)", "fuera_exclusivo"),
+        ("P(X ≤ a o X ≥ b)", "fuera_inclusivo"),
+    ],
+    description="Probabilidad:"
+)
+
+# Parámetros de las distribuciones
+mu_w = widgets.FloatText(description="μ:", value=0.0)
+sigma_w = widgets.FloatText(description="σ:", value=1.0)
+lambda_w = widgets.FloatText(description="λ:", value=1.0)
+k_w = widgets.IntText(description="k:", value=1)
+
+# Área de salida
+output = widgets.Output()
+
+# Función para graficar
+def plot_distribution(x, y, title):
+    plt.figure(figsize=(8, 4))
+    plt.plot(x, y, label=title, color='blue')
+    plt.title(title)
+    plt.xlabel("x")
+    plt.ylabel("Densidad de probabilidad")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# Función principal
+def calcular(*args):
+    with output:
+        clear_output()
+
+        # Captura valores
+        dist = distribucion_w.value
+        tipo = tipo_prob_w.value
+
+        a_dist = a_distribucion_w.value
+        b_dist = b_distribucion_w.value
+
+        a_int = a_intervalo_w.value
+        b_int = b_intervalo_w.value
+        x = x_w.value
+
+        mu = mu_w.value
+        sigma = sigma_w.value
+        lmbda = lambda_w.value
+        k = k_w.value
+
+        distribucion = None
+        titulo = ""
+        x_vals = None
+
+        # Crear distribución
+        if dist == "Uniforme":
+            distribucion = uniform(loc=a_dist, scale=b_dist - a_dist)
+            x_vals = np.linspace(a_dist - 2, b_dist + 2, 1000)
+            titulo = f"Distribución Uniforme(a={a_dist}, b={b_dist})"
+        elif dist == "Normal":
+            distribucion = norm(loc=mu, scale=sigma)
+            x_vals = np.linspace(mu - 4 * sigma, mu + 4 * sigma, 1000)
+            titulo = f"Distribución Normal(μ={mu}, σ={sigma})"
+        elif dist == "Exponencial":
+            distribucion = expon(scale=1/lmbda)
+            x_vals = np.linspace(0, 10/lmbda, 1000)
+            titulo = f"Distribución Exponencial(λ={lmbda})"
+        elif dist == "Erlang":
+            distribucion = erlang(k, scale=1/lmbda)
+            x_vals = np.linspace(0, 10*k/lmbda, 1000)
+            titulo = f"Distribución Erlang(k={k}, λ={lmbda})"
+
+        # Calcular probabilidad
+        prob = None
+        if tipo == "igual":
+            prob = distribucion.pdf(x)
+        elif tipo == "mayor":
+            prob = 1 - distribucion.cdf(x)
+        elif tipo == "menor":
+            prob = distribucion.cdf(x)
+        elif tipo == "menor_igual":  # Nueva opción
+            prob = distribucion.cdf(x)
+        elif tipo == "mayor_igual":  # Nueva opción
+            prob = 1 - distribucion.cdf(x)
+        elif tipo == "entre_exclusivo":
+            prob = distribucion.cdf(b_int) - distribucion.cdf(a_int)
+        elif tipo == "entre_inclusivo":
+            prob = distribucion.cdf(b_int) - distribucion.cdf(a_int)
+        elif tipo == "fuera_exclusivo":
+            prob = distribucion.cdf(a_int) + (1 - distribucion.cdf(b_int))
+        elif tipo == "fuera_inclusivo":
+            prob = distribucion.cdf(a_int) + (1 - distribucion.cdf(b_int))
+
+        # Resultados
+        media = distribucion.mean()
+        varianza = distribucion.var()
+        desviacion = distribucion.std()
+
+        print("🎯 Resultados:")
+        print(f"Media: {media}")
+        print(f"Varianza: {varianza}")
+        print(f"Desviación estándar: {desviacion}")
+        print(f"Probabilidad solicitada: {prob}")
+
+        y_vals = distribucion.pdf(x_vals)
+        plot_distribution(x_vals, y_vals, titulo)
+
+# Mostrar widgets
+inputs = widgets.VBox([
+    distribucion_w, tipo_prob_w,
+    widgets.Label(value="Definir distribución:"),
+    widgets.HBox([a_distribucion_w, b_distribucion_w]),
+    widgets.Label(value="Definir intervalo de probabilidad:"),
+    widgets.HBox([a_intervalo_w, b_intervalo_w, x_w]),
+    widgets.Label(value="Parámetros de distribución:"),
+    widgets.HBox([mu_w, sigma_w, lambda_w, k_w])
+])
+
+display(inputs, output)
+
+# Enlazar cambios
+for w in [distribucion_w, tipo_prob_w, a_distribucion_w, b_distribucion_w,
+          a_intervalo_w, b_intervalo_w, x_w, mu_w, sigma_w, lambda_w, k_w]:
+    w.observe(calcular, 'value')
+
+calcular()  # Ejecutar al inicio
